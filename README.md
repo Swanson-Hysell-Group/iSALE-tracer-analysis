@@ -25,15 +25,14 @@ There are many options to control the plots output by the tracer_interpreter.py 
         -h -> print this help message
         -m -> make the parsed tracer files used to plot must be followed by input tracer files path
         -n -> overwrite any prexsiting tracer-out file
-        -v -> specify variables to plot (requres 2 in order to plot)
+        -v -> specify variables to plot in a tuple format (i.e. (Xmark,Ymark), requres 2 in order to plot, can plot up to 3)
         -i -> specify input file path for plotting (optional)
         -T -> give plot a title (optional)
         -t -> specify time of simulation to plot currently only initial or final (optional)
-        -l -> change line style of plot (for options look at matplotlib linestyle)
-        -k -> change marker style of plot (for options look at matplotlib marker)
-        -s -> save plot image (optional)
+        -s -> change size of markers (size in pixels, default = 30)
+        -c -> change the colormap used in the plot (look at matplotlib colormaps)
+        -S -> save plot image (optional)
         -r -> range of depths to plot must be a list of integer rows, or integer end range (i.e. [1,2,3,4] or 10=range(10))
-        -H -> hide legend (optional)
         -M -> print max and min values to consul (optional)
         -R -> preform and plot a polynomial regression default degree is 1 (optional)
         -d -> set degree of the polynomial regression (optional)

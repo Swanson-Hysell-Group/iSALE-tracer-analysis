@@ -1,5 +1,6 @@
 from math import *
 from matplotlib import pyplot as plt
+from matplotlib import colors as col
 import numpy as np
 import sys,os
 
@@ -183,38 +184,50 @@ def read_tracer_out_file(filepath):
         line = tracer_out_file.readline()
     return layers
 
-def plot_tracer_data(v1,v2,layers_to_plot="All",filepath="TracerResults/tracer-out.txt",title='My_Plot',initial_or_final="ff",linestyle='None',markerstyle='o',save_plot=False, plot_legend=True, preform_regression=False, degree_regression=1,display_max_min=False):
+def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.txt",title='My_Plot',initial_or_final="fff",size=30,colormap='gist_rainbow',save_plot=False, preform_regression=False, degree_regression=1,display_max_min=False):
     layers = read_tracer_out_file(filepath)
     try:
         legend = []
+        x_tot,y_tot,z_tot = [],[],[]
         keys = map(float, layers.keys())
         keys.sort(cmp=cart_comp)
         keys = map(str, keys)
-        x_max,x_min,y_max,y_min = 0.,1e9,0.,1e9
+        x_max,x_min,y_max,y_min,z_max,z_min = 0.,1e9,0.,1e9,0.,1e9
         if preform_regression: all_x,all_y = [],[]
         if layers_to_plot=="All": layers_to_plot=range(len(keys))
+        if ('Xmark' or 'Ymark' in v):
+            if ('Dip' or 'Ang' or 'Dis' in v):
+                f = lambda p: p + '_short' if p == 'Xmark' or 'Ymark' else p
+                map(f,v)
+        try: v1,v2,v3 = v
+        except ValueError: v1,v2 = v
+        x_time,y_time,z_time = None,None,None
+        if initial_or_final[0] == 'f': x_time = 'final'
+        elif initial_or_final[0] == 'i': x_time = 'initial'
+        if initial_or_final[1] == 'f': y_time = 'final'
+        elif initial_or_final[1] == 'i': y_time = 'initial'
+        if len(initial_or_final) > 2 and len(v) > 2 and initial_or_final[2] == 'f': z_time = 'final'
+        elif len(initial_or_final) > 2 and len(v) > 2 and initial_or_final[2] == 'i': z_time = 'initial'
+        if not x_time and (not y_time or not z_time):
+            print(initial_or_final + " is not a valid time input options are [ff,if,fi,ii,iii,ifi,iff,fii,ffi,fif,fff]")
+            return
         for n in layers_to_plot:
             if n > len(keys) or n < -len(keys)-1:
                 print("n out of range no corrisponding layer, skipping for n = " + str(n))
                 continue
             key = keys[n]
-            if initial_or_final == 'ff': x_time,y_time = 'final','final'
-            elif initial_or_final == 'if': x_time,y_time = 'initial','final'
-            elif initial_or_final == 'fi': x_time,y_time = 'final','initial'
-            elif initial_or_final == 'ii': x_time,y_time = 'initial','initial'
-            else:
-                print(initial_or_final + " is not a valid time input options are [ff,if,fi,ii]")
-                return
             x_values = layers[key][x_time]
             y_values = layers[key][y_time]
-            if (v1 == 'Xmark' or v1 == 'Ymark' or v2 == 'Xmark' or v2 == 'Ymark'):
-                if (v1 == 'Dip' or v1 == 'Ang' or v1 == 'Dis'): v2 += '_short'
-                elif (v2 == 'Dip' or v2 == 'Ang' or v2 == 'Dis'): v1 += '_short'
-            x = x_values[v1]
-            y = y_values[v2]
-            x = map(float,x)
-            y = map(float,y)
+            if z_time: z_values = layers[key][z_time]
+            else: z_values = None
+            x = map(float,x_values[v1])
+            y = map(float,y_values[v2])
             if not x or not y: continue
+            if z_values != None:
+                z = map(float,z_values[v3])
+                if not z: continue
+                if max(z) > z_max: z_max = max(z)
+                if min(z) < z_min: z_min = min(z)
             if max(x) > x_max: x_max = max(x)
             if min(x) < x_min: x_min = min(x)
             if max(y) > y_max: y_max = max(y)
@@ -223,18 +236,21 @@ def plot_tracer_data(v1,v2,layers_to_plot="All",filepath="TracerResults/tracer-o
                 x = x[:len(y)]
             elif len(x) < len(y):
                 y = y[:len(x)]
-            if preform_regression: all_x += x; all_y += y
-            c = float(n)/max(layers_to_plot)
-            plot_color = (1-c,0,c)
-            plot_handle = plt.plot(x,y,linestyle=linestyle,marker=markerstyle,color=plot_color)
-            legend.append(str(int(float(key))))
+            x_tot += x
+            y_tot += y
+            if z_values:
+                z_tot += z
+            else:
+                z_tot += [int(float(key)) for i in range(len(x))]
+        plot_handle = plt.scatter(x_tot,y_tot,c=z_tot,s=size,cmap=colormap)
+        plt.colorbar()
         plt.xlabel(v1)
         plt.ylabel(v2)
         plt.title(title)
         plt.axis([x_min,x_max,y_min,y_max])
         if preform_regression:
-            polycoefs = np.polyfit(all_x,all_y,degree_regression)
-            x_range = range(int(min(all_x)),int(max(all_x)))
+            polycoefs = np.polyfit(x_tot,y_tot,degree_regression)
+            x_range = range(int(min(x_tot)),int(max(x_tot)))
             polyvals = np.polyval(polycoefs,x_range)
             reg = plt.plot(x_range,polyvals)
             plt.setp(reg, color='k', linewidth=3.0)
@@ -245,9 +261,8 @@ def plot_tracer_data(v1,v2,layers_to_plot="All",filepath="TracerResults/tracer-o
             regression_entry += str(round(polycoefs[-1],3))
             #regression_entry += str(R_2)
             legend.append(regression_entry)
+            plt.legend(reg,legend)
             print("Fit Equation = " + regression_entry)
-        if plot_legend:
-            plt.legend(legend,prop={'size':10},loc=1)
         if save_plot:
             directory = reduce(lambda x,y: x + '/' + y, filepath.split('/')[:-1]) + '/'
             plt.savefig(directory + title + '_' + v1 + '_' + v2 + '_' + initial_or_final +'.png')
@@ -255,10 +270,11 @@ def plot_tracer_data(v1,v2,layers_to_plot="All",filepath="TracerResults/tracer-o
             print("lowest layer: " + keys[layers_to_plot[-1]] + ", highest_layer: " + keys[layers_to_plot[0]])
             print(v1 + ": " + "(max = " + str(x_max) + ", min = " + str(x_min) + ")")
             print(v2 + ": " + "(max = " + str(y_max) + ", min = " + str(y_min) + ")")
+            print(v3 + ": " + "(max = " + str(z_max) + ", min = " + str(z_min) + ")")
         plt.show()
 
     except KeyError:
-        print("one of the input variables [" + v1 + "," + v2 + "] does not exist options include: " + reduce(lambda x,y: x + ', ' + y, layers[key][x_time   ].keys()))
+        print("one of the input variables " + v + " does not exist options include: " + reduce(lambda x,y: x + ', ' + y, layers[key][x_time   ].keys()))
     except IndexError:
         print("layer number out of range must be between: [" + str(0) + "," + str(len(layers.keys())-1) + "]")
 
@@ -274,15 +290,14 @@ def __main__():
         -h -> print this help message
         -m -> make the parsed tracer files used to plot must be followed by input tracer files path
         -n -> overwrite any prexsiting tracer-out file
-        -v -> specify variables to plot (requres 2 in order to plot)
+        -v -> specify variables to plot in a tuple format (i.e. (Xmark,Ymark), requres 2 in order to plot, can plot up to 3)
         -i -> specify input file path for plotting (optional)
         -T -> give plot a title (optional)
         -t -> specify time of simulation to plot currently only initial or final (optional)
-        -l -> change line style of plot (for options look at matplotlib linestyle)
-        -k -> change marker style of plot (for options look at matplotlib marker)
-        -s -> save plot image (optional)
+        -s -> change size of markers (size in pixels, default = 30)
+        -c -> change the colormap used in the plot (look at matplotlib colormaps)
+        -S -> save plot image (optional)
         -r -> range of depths to plot must be a list of integer rows, or integer end range (i.e. [1,2,3,4] or 10=range(10))
-        -H -> hide legend (optional)
         -M -> print max and min values to consul (optional)
         -R -> preform and plot a polynomial regression default degree is 1 (optional)
         -d -> set degree of the polynomial regression (optional)
@@ -304,8 +319,7 @@ def __main__():
     elif '-v' in sys.argv:
         args = []
         v_index = sys.argv.index('-v')
-        args.append(sys.argv[v_index+1])
-        args.append(sys.argv[v_index+2])
+        args.append(sys.argv[v_index+1].strip('( )').split(','))
         kwargs = {}
         if '-i' in sys.argv:
             i_index = sys.argv.index('-i')
@@ -313,18 +327,16 @@ def __main__():
         if '-T' in sys.argv:
             T_index = sys.argv.index('-T')
             kwargs['title'] = sys.argv[T_index+1]
-        if '-k' in sys.argv:
-            k_index = sys.argv.index('-k')
-            kwargs['markerstyle'] = sys.argv[k_index+1]
-        if '-l' in sys.argv:
-            l_index = sys.argv.index('-l')
-            kwargs['linestyle'] = sys.argv[l_index+1]
-        if '-H' in sys.argv:
-            kwargs['plot_legend'] = False
+        if '-s' in sys.argv:
+            k_index = sys.argv.index('-s')
+            kwargs['size'] = sys.argv[k_index+1]
+        if '-c' in sys.argv:
+            l_index = sys.argv.index('-c')
+            kwargs['colormap'] = sys.argv[l_index+1]
         if '-t' in sys.argv:
             t_index = sys.argv.index('-t')
             kwargs['initial_or_final'] = sys.argv[t_index+1]
-        if '-s' in sys.argv:
+        if '-S' in sys.argv:
             kwargs['save_plot'] = True
         if '-r' in sys.argv:
             r_index = sys.argv.index('-r')
