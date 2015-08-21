@@ -127,7 +127,7 @@ def mk_final_results(directory="TracerResults", filename='tracer-parsed.txt', ov
                 theta_d = acos((c**2 + a_d**2 - b_d**2)/(2*a_d*c))*(180/pi)
             if b < 0: theta = -theta
             theta = theta
-            if newlayer: c,theta,d_theta = 'None','None','None'; newlayer = False
+            if newlayer: c,theta,theta_d = 'None','None','None'; newlayer = False
             try: current_tracer_str += str(CT_values[0]) + '\t' + str(CT_values[1]) + '\t' + str(CT_values[2]) + '\t' + str(c) + '\t' + str(theta_d) + '\t' + str(theta) + '\t' + str(CT_values[3]) + '\t' + str(CT_values[4]) + '\n'
             except IndexError: current_tracer_str += str(CT_values[0]) + '\t' + str(CT_values[1]) + '\t' + str(CT_values[2]) + '\t' + str(c) + '\t' + str(theta_d) + '\t' + str(theta) + '\n'
         final_results_file.write(current_tracer_str)
@@ -146,7 +146,6 @@ def read_tracer_out_file(filepath):
     layers = {}
     line,l = 'mary had a little lamb',0
     while line:
-        l += 1
         values = line.split()
         if values[0] == 'Time':
             initial = tracer_out_file.readline().split()
@@ -176,6 +175,7 @@ def read_tracer_out_file(filepath):
                     layers[initial[2]]['initial']['Ymark_short'].append(initial[i])
                     layers[initial[2]]['final']['Ymark_short'].append(final[i])
         line = tracer_out_file.readline()
+        l += 1
     return layers
 
 def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.txt",title='My_Plot',initial_or_final="fff",size=30,colormap='gist_rainbow',save_plot=False, preform_regression=False, degree_regression=1,display_max_min=False):
@@ -189,10 +189,9 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
         x_max,x_min,y_max,y_min,z_max,z_min = 0.,1e9,0.,1e9,0.,1e9
         if preform_regression: all_x,all_y = [],[]
         if layers_to_plot=="All": layers_to_plot=range(len(keys))
-        if ('Xmark' or 'Ymark' in v):
-            if ('Dip' or 'Ang' or 'Dis' in v):
-                f = lambda p: p + '_short' if (p == 'Xmark' or p == 'Ymark') else p
-                v = map(f,v)
+        if ('Xmark' in v or 'Ymark' in v) and ('Dip' in v or 'Ang' in v or 'Dis' in v):
+            f = lambda p: p + '_short' if (p == 'Xmark' or p == 'Ymark') else p
+            v = map(f,v)
         try: v1,v2,v3 = v
         except ValueError: v1,v2 = v
         x_time,y_time,z_time = None,None,None
