@@ -1,5 +1,16 @@
 # iSALE-tracer-analysis
 
+## mk_tracer_files.sh
+
+A bash script to run in parallel iSALEPlot on a simulation creating the large set of tracer-#.txt files that are needed to create a decent resolution plot using tracer_interperter.py or quiver_mag_angle.py. Usage is as follows:
+
+```bash
+~/$ chmod a+x mk_tracer_files.sh
+~/$ ./mk_tracer_files.sh [PATHTOPLOT.inp] [PATHTODATA.dat] [LOGFILEPATH]
+```
+
+The .inp file format can be found in the iSALEPlot documentation, and the .dat file should be the simulations data file output. The last argument is simply where you want the log file to be placed for this run, the log file is simply a text file that records the latest tracer to be anaylized. This script runs iSALEPlot in batches of 20 parallel processes from tracer = 0 to tracer = 10000, which is usually a decent level of resolution for a simulation. If more files are required simply edit the bounds of the first for loop in the script.
+
 ## tracer_interpreter.py
 
 tracer_interpreter.py is the main analysis program. This library contains the functions that create the tracer-out.txt file that compiles all of the tracer-#.txt files from the iSALEPlot program, as well as the functions that read and plot the tracer-out files data. 
@@ -37,20 +48,6 @@ There are many options to control the plots output by the tracer_interpreter.py 
         -R -> preform and plot a polynomial regression default degree is 1 (optional)
         -d -> set degree of the polynomial regression (optional)
 
-## cleanup_tracer_data.py
-
-A basic python script developed to allow easy trimming of the tracer-out.txt data. Basic usage of this script can be seen bellow:
-
-    SYNTAX:
-        python cleanup_tracer_data.py [tracer-out.txt] -[FLAG] [INPUT]
-
-    FLAGS:
-        -h -> print this help message
-        -i -> cut data by initial value instead of final values as is default
-        -ch -> cut data by x value from the right, input must be a number (float or int) that represents in km the maximum x value allowed, cutting all data with a larger x value than the input. (optional)
-        -cvu -> cut data by y value from above so that input is the largest allowed y value in km (optional)
-        -cvd -> cut data by y value from bellow so that input is the smallest allowed y value in km (optional)
-
 ## quiver_mag_angle.py
 
 A plotting program that does a quiver plot on angle data for a tracer-out.txt file, as well as colormaps for another variable. Usage similar to tracer_interperter, and due to dependencies in tracer_interperter they must be placed in the same directory to both work.
@@ -68,3 +65,17 @@ A plotting program that does a quiver plot on angle data for a tracer-out.txt fi
         -t2 -> title of the final plot (optional)
         -S -> save plot image (optional)
         -c -> choose colormap (optional; default=gist_rainbow)
+
+## cleanup_tracer_data.py
+
+A basic python script developed to allow easy trimming of the tracer-out.txt data. Basic usage of this script can be seen bellow:
+
+    SYNTAX:
+        python cleanup_tracer_data.py [tracer-out.txt] -[FLAG] [INPUT]
+
+    FLAGS:
+        -h -> print this help message
+        -i -> cut data by initial value instead of final values as is default
+        -ch -> cut data by x value from the right, input must be a number (float or int) that represents in km the maximum x value allowed, cutting all data with a larger x value than the input. (optional)
+        -cvu -> cut data by y value from above so that input is the largest allowed y value in km (optional)
+        -cvd -> cut data by y value from bellow so that input is the smallest allowed y value in km (optional)
