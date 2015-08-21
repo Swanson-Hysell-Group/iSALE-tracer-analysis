@@ -151,6 +151,7 @@ def read_tracer_out_file(filepath):
             initial = tracer_out_file.readline().split()
             final = tracer_out_file.readline().split()
             if initial[2] not in layers.keys():
+                initial[2] = str(float(initial[2]))
                 layers[initial[2]] = {'initial':{}, 'final':{}}
             if ('Xmark_short' not in layers[initial[2]]['initial']):
                 layers[initial[2]]['initial']['Xmark_short'] = []
@@ -271,7 +272,7 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
         plt.show()
 
     except KeyError:
-        print("one of the input variables " + str(v) + " does not exist options include: " + reduce(lambda x,y: x + ', ' + y, layers[key][x_time   ].keys()))
+        print("one of the input variables " + str(v) + " does not exist options for depth " + key + " include: " + reduce(lambda x,y: x + ', ' + y, layers[key][x_time].keys()))
     except IndexError:
         print("layer number out of range must be between: [" + str(0) + "," + str(len(layers.keys())-1) + "]")
 
