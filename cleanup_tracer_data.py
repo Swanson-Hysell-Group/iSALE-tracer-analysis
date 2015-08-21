@@ -3,7 +3,7 @@ import sys
 def __main__(filename,max_x=1e9,max_y_d=1e9,max_y_u=1e9,cut_from_final=True):
     """
     DESCRIPTION:
-        Script designed to cut data from a tracer-out.txt file to remove any bad or extreame data. By default removes any tracers that have flown to inf otherwise only cuts according input flags.
+        A data cutting script that takes in a tracer-out.txt file and outputs a tracer-out file called tracer-out.trimmed. By defult the program cuts any tracers that fly to "infinity" as well as any data points that have 0 temp or pressure as they have likely become gasses. In addition the usage of a number of flags can allow for cutting data via spacial constraints.
 
     SYNTAX:
         python cleanup_tracer_data.py [tracer-out.txt] -[FLAG] [INPUT]
@@ -31,7 +31,7 @@ def __main__(filename,max_x=1e9,max_y_d=1e9,max_y_u=1e9,cut_from_final=True):
                     i += 1
                     continue
             else:
-                if int(float(init_vals[1])) >= max_x or -int(float(init_vals[2])) >= max_y_d or int(float(init_vals[2])) >= max_y_u or int(float(init_vals[1])) <= 0 or int(float(final_vals[1])) >= 47427 and int(float(final_vals[2])) >= 47427:
+                if int(float(init_vals[1])) >= max_x or -int(float(init_vals[2])) >= max_y_d or int(float(init_vals[2])) >= max_y_u or int(float(init_vals[1])) <= 0 or int(float(final_vals[1])) >= 47427 and int(float(final_vals[2])) >= 47427 or int(float(final_vals[6])) == 0 or int(float(final_vals[7])) == 0:
                     print("skipping line: " + str(i))
                     i += 1
                     continue
@@ -46,7 +46,11 @@ def __main__(filename,max_x=1e9,max_y_d=1e9,max_y_u=1e9,cut_from_final=True):
                 out_str += val + "\t"
             out_str += final_vals[-1] + "\n"
         i += 1
-    out_file = open(filename.split('.')[:-1][0]+'.trimmed','w')
+    file_list = filename.split('.')[:-1]
+    if len(file_list) == 1: file_ext = file_list[0]
+    else:
+        file_ext = reduce(lambda x,y: x + '.' + y, file_list)
+    out_file = open(file_ext+'.trimmed','w')
     out_file.write(out_str)
 
 if __name__ == "__main__":

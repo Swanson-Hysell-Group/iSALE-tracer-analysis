@@ -153,34 +153,28 @@ def read_tracer_out_file(filepath):
             final = tracer_out_file.readline().split()
             if initial[2] not in layers.keys():
                 layers[initial[2]] = {'initial':{}, 'final':{}}
+            if ('Xmark_short' not in layers[initial[2]]['initial']):
+                layers[initial[2]]['initial']['Xmark_short'] = []
+            if ('Ymark_short' not in layers[initial[2]]['initial']):
+                layers[initial[2]]['initial']['Ymark_short'] = []
+            if ('Xmark_short' not in layers[initial[2]]['final']):
+                layers[initial[2]]['final']['Xmark_short'] = []
+            if ('Ymark_short' not in layers[initial[2]]['final']):
+                layers[initial[2]]['final']['Ymark_short'] = []
             for i in range(len(values)):
                 if values[i] not in layers[initial[2]]['initial'].keys():
                     layers[initial[2]]['initial'][values[i]] = []
                 if values[i] not in layers[initial[2]]['final'].keys():
                     layers[initial[2]]['final'][values[i]] = []
-                try:
-                    if 'Xmark_short' or 'Ymark_short' not in layers[initial[2]]['initial']:
-                        layers[initial[2]]['initial']['Xmark_short'] = []
-                        layers[initial[2]]['final']['Xmark_short'] = []
-                        layers[initial[2]]['initial']['Ymark_short'] = []
-                        layers[initial[2]]['final']['Ymark_short'] = []
-                        last_ix = 1
-                        last_fx = 1
-                        last_iy = 1
-                        last_fy = 1
-                    if ('None' in initial or 'None' in final) and ('Xmark' and 'Ymark' in layers[initial[2]]['initial'].keys()):
-                        layers[initial[2]]['initial']['Xmark_short'] += layers[initial[2]]['initial']['Xmark'][last_ix:-1]
-                        layers[initial[2]]['final']['Xmark_short'] += layers[initial[2]]['final']['Xmark'][last_fx:-1]
-                        layers[initial[2]]['initial']['Ymark_short'] += layers[initial[2]]['initial']['Ymark'][last_iy:-1]
-                        layers[initial[2]]['final']['Ymark_short'] += layers[initial[2]]['final']['Ymark'][last_fy:-1]
-                        last_ix = len(layers[initial[2]]['initial']['Xmark']) + 1
-                        last_fx = len(layers[initial[2]]['final']['Xmark']) + 1
-                        last_iy = len(layers[initial[2]]['initial']['Ymark']) + 1
-                        last_fy = len(layers[initial[2]]['final']['Ymark']) + 1
-                        continue
-                    layers[initial[2]]['initial'][values[i]].append(initial[i])
-                    layers[initial[2]]['final'][values[i]].append(final[i])
-                except IndexError: pass #print("IndexError in readfile"); print(l,i)
+                if initial[i] == 'None' or final[i] == 'None': continue
+                layers[initial[2]]['initial'][values[i]].append(initial[i])
+                layers[initial[2]]['final'][values[i]].append(final[i])
+                if values[i] == 'Xmark' and 'None' not in initial and 'None' not in final:
+                    layers[initial[2]]['initial']['Xmark_short'].append(initial[i])
+                    layers[initial[2]]['final']['Xmark_short'].append(final[i])
+                elif values[i] == 'Ymark' and 'None' not in initial and 'None' not in final:
+                    layers[initial[2]]['initial']['Ymark_short'].append(initial[i])
+                    layers[initial[2]]['final']['Ymark_short'].append(final[i])
         line = tracer_out_file.readline()
     return layers
 
@@ -197,8 +191,8 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
         if layers_to_plot=="All": layers_to_plot=range(len(keys))
         if ('Xmark' or 'Ymark' in v):
             if ('Dip' or 'Ang' or 'Dis' in v):
-                f = lambda p: p + '_short' if p == 'Xmark' or 'Ymark' else p
-                map(f,v)
+                f = lambda p: p + '_short' if (p == 'Xmark' or p == 'Ymark') else p
+                v = map(f,v)
         try: v1,v2,v3 = v
         except ValueError: v1,v2 = v
         x_time,y_time,z_time = None,None,None
@@ -232,10 +226,6 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
             if min(x) < x_min: x_min = min(x)
             if max(y) > y_max: y_max = max(y)
             if min(y) < y_min: y_min = min(y)
-            if len(x) > len(y):
-                x = x[:len(y)]
-            elif len(x) < len(y):
-                y = y[:len(x)]
             x_tot += x
             y_tot += y
             if z_values:
@@ -243,11 +233,15 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
             else:
                 z_tot += [int(float(key)) for i in range(len(x))]
         plot_handle = plt.scatter(x_tot,y_tot,c=z_tot,s=size,cmap=colormap)
-        plt.colorbar()
+        cbar = plt.colorbar()
+        if len(v) > 2: cbar.set_label(v3)
+        else: cbar.set_label('initial depth')
         plt.xlabel(v1)
         plt.ylabel(v2)
         plt.title(title)
-        plt.axis([x_min,x_max,y_min,y_max])
+        x_space = max(map(abs,x_tot))
+        y_space = max(map(abs,y_tot))
+        plt.axis([x_min-.05*x_space,x_max+.05*x_space,y_min-.05*y_space,y_max+.05*y_space])
         if preform_regression:
             polycoefs = np.polyfit(x_tot,y_tot,degree_regression)
             x_range = range(int(min(x_tot)),int(max(x_tot)))
@@ -264,24 +258,28 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
             plt.legend(reg,legend)
             print("Fit Equation = " + regression_entry)
         if save_plot:
+            figure = plt.gcf()
+            figure.set_size_inches(16, 9)
             directory = reduce(lambda x,y: x + '/' + y, filepath.split('/')[:-1]) + '/'
-            plt.savefig(directory + title + '_' + v1 + '_' + v2 + '_' + initial_or_final +'.png')
+            var_out_str = reduce(lambda x,y: x + '_' + y, v)
+            if not os.path.exists(directory+'Plots/'): os.mkdir(directory+'Plots/')
+            plt.savefig(directory + 'Plots/' + title.replace(' ','_') + '_' + var_out_str + '_' + initial_or_final +'.png',dpi=1296)
         if display_max_min:
             print("lowest layer: " + keys[layers_to_plot[-1]] + ", highest_layer: " + keys[layers_to_plot[0]])
             print(v1 + ": " + "(max = " + str(x_max) + ", min = " + str(x_min) + ")")
             print(v2 + ": " + "(max = " + str(y_max) + ", min = " + str(y_min) + ")")
-            print(v3 + ": " + "(max = " + str(z_max) + ", min = " + str(z_min) + ")")
+            if len(v) > 2: print(v3 + ": " + "(max = " + str(z_max) + ", min = " + str(z_min) + ")")
         plt.show()
 
     except KeyError:
-        print("one of the input variables " + v + " does not exist options include: " + reduce(lambda x,y: x + ', ' + y, layers[key][x_time   ].keys()))
+        print("one of the input variables " + str(v) + " does not exist options include: " + reduce(lambda x,y: x + ', ' + y, layers[key][x_time   ].keys()))
     except IndexError:
         print("layer number out of range must be between: [" + str(0) + "," + str(len(layers.keys())-1) + "]")
 
 def __main__():
     """
     DESCRIPTION:
-    Creates parsed tracer-out and tracer-parsed files which collect data from a collection of iSALE tracer files and remove extranious information keeping only start and end times as well as compiling all the data in one place and for plot variables it keeps the max value for all time, this then can be used with this script to plot and save plots of this data.
+      Creates parsed tracer-out and tracer-parsed files which collect data from a collection of iSALE tracer files and remove extranious information keeping only start and end times as well as compiling all the data in one place and for plot variables it keeps the max value for all time, this then can be used with this script to plot and save plots of this data.
 
     SYNTAX:
         python tracer_interperter.py -[FLAG] [INPUT]
@@ -295,9 +293,9 @@ def __main__():
         -T -> give plot a title (optional)
         -t -> specify time of simulation to plot currently only initial or final (optional)
         -s -> change size of markers (size in pixels, default = 30)
-        -c -> change the colormap used in the plot (look at matplotlib colormaps)
+        -c -> change the colormap used in the plot (look at matplotlib colormaps) (optional)
         -S -> save plot image (optional)
-        -r -> range of depths to plot must be a list of integer rows, or integer end range (i.e. [1,2,3,4] or 10=range(10))
+        -r -> range of depths to plot must be a list of integer rows, or a range start, end, and step size (i.e. [1,2,3,4] or 12,42,3)
         -M -> print max and min values to consul (optional)
         -R -> preform and plot a polynomial regression default degree is 1 (optional)
         -d -> set degree of the polynomial regression (optional)
@@ -329,7 +327,7 @@ def __main__():
             kwargs['title'] = sys.argv[T_index+1]
         if '-s' in sys.argv:
             k_index = sys.argv.index('-s')
-            kwargs['size'] = sys.argv[k_index+1]
+            kwargs['size'] = int(sys.argv[k_index+1])
         if '-c' in sys.argv:
             l_index = sys.argv.index('-c')
             kwargs['colormap'] = sys.argv[l_index+1]

@@ -32,7 +32,7 @@ There are many options to control the plots output by the tracer_interpreter.py 
         -s -> change size of markers (size in pixels, default = 30)
         -c -> change the colormap used in the plot (look at matplotlib colormaps)
         -S -> save plot image (optional)
-        -r -> range of depths to plot must be a list of integer rows, or integer end range (i.e. [1,2,3,4] or 10=range(10))
+        -r -> range of depths to plot must be a list of integer rows, or a range start, end, and step size (i.e. [1,2,3,4] or 12,42,3)
         -M -> print max and min values to consul (optional)
         -R -> preform and plot a polynomial regression default degree is 1 (optional)
         -d -> set degree of the polynomial regression (optional)
@@ -53,4 +53,18 @@ A basic python script developed to allow easy trimming of the tracer-out.txt dat
 
 ## quiver_mag_angle.py
 
-A plotting program that does a quiver plot on angle data for a tracer-out.txt file. Yet to be completed in a usable manner under development.
+A plotting program that does a quiver plot on angle data for a tracer-out.txt file, as well as colormaps for another variable. Usage similar to tracer_interperter, and due to dependencies in tracer_interperter they must be placed in the same directory to both work.
+
+    SYNTAX:
+        python quiver_mag_angle.py [-FLAGS] [SYNTAX]
+
+    FLAGS:
+        -h -> print this help message
+        -i -> set input filepath (optional; default=TracerResults/tracer-out.txt)
+        -a -> choose angle variable to display (optional; options Ang,Dip; default=Ang)
+        -v -> choose colormap variable (optional;default=initial depth)
+        -r -> range of depths to plot must be a list of integer rows, or a range start, end, and step size (i.e. [1,2,3,4] or 12,42,3) (optional; default=All)
+        -t1 -> title of the initial plot (optional)
+        -t2 -> title of the final plot (optional)
+        -S -> save plot image (optional)
+        -c -> choose colormap (optional; default=gist_rainbow)
