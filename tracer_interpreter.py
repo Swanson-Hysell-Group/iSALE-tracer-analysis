@@ -123,14 +123,14 @@ def mk_final_results(directory="TracerResults", filename='tracer-parsed.txt', ov
             c = sqrt(a**2 + b**2)
             if a == 0: theta,theta_d = pi/2,pi/2
             else:
-                theta = acos((c**2 + a**2 - b**2)/(2*a*c))*(180/pi)
+                theta = -acos((c**2 + a**2 - b**2)/(2*a*c))*(180/pi)
                 theta_d = acos((c**2 + a_d**2 - b_d**2)/(2*a_d*c))*(180/pi)
             if b < 0: theta = -theta
-            theta = theta
             if newlayer: c,theta,theta_d = 'None','None','None'; newlayer = False
             try: current_tracer_str += str(CT_values[0]) + '\t' + str(CT_values[1]) + '\t' + str(CT_values[2]) + '\t' + str(c) + '\t' + str(theta_d) + '\t' + str(theta) + '\t' + str(CT_values[3]) + '\t' + str(CT_values[4]) + '\n'
             except IndexError: current_tracer_str += str(CT_values[0]) + '\t' + str(CT_values[1]) + '\t' + str(CT_values[2]) + '\t' + str(c) + '\t' + str(theta_d) + '\t' + str(theta) + '\n'
-        final_results_file.write(current_tracer_str)
+        if current_tracer_str.count("\n") == 4:
+            final_results_file.write(current_tracer_str)
         current_tracer = next_tracer
         CT_inital_values = NT_initial_values
         CT_final_values = NT_final_values
@@ -141,10 +141,11 @@ def read_tracer_out_file(filepath):
     """
     A utility function that reads in tracer out formated files into a dictionary of layers determined by initial y position each of which contains it's own dictionary of either final or initial values.
     @param: filepath -> the path to the tracer-out file to read in
+    @return: layers -> lists of data in a dictionary of variables, in a dictionary of time steps, in a dictionary of layers
     """
     tracer_out_file = open(filepath, 'r')
     layers = {}
-    line,l = 'mary had a little lamb',0
+    line,lnum = 'mary had a little lamb',0
     while line:
         values = line.split()
         if values[0] == 'Time':
@@ -162,21 +163,25 @@ def read_tracer_out_file(filepath):
             if ('Ymark_short' not in layers[initial[2]]['final']):
                 layers[initial[2]]['final']['Ymark_short'] = []
             for i in range(len(values)):
-                if values[i] not in layers[initial[2]]['initial'].keys():
-                    layers[initial[2]]['initial'][values[i]] = []
-                if values[i] not in layers[initial[2]]['final'].keys():
-                    layers[initial[2]]['final'][values[i]] = []
-                if initial[i] == 'None' or final[i] == 'None': continue
-                layers[initial[2]]['initial'][values[i]].append(initial[i])
-                layers[initial[2]]['final'][values[i]].append(final[i])
-                if values[i] == 'Xmark' and 'None' not in initial and 'None' not in final:
-                    layers[initial[2]]['initial']['Xmark_short'].append(initial[i])
-                    layers[initial[2]]['final']['Xmark_short'].append(final[i])
-                elif values[i] == 'Ymark' and 'None' not in initial and 'None' not in final:
-                    layers[initial[2]]['initial']['Ymark_short'].append(initial[i])
-                    layers[initial[2]]['final']['Ymark_short'].append(final[i])
+                try:
+                    if values[i] not in layers[initial[2]]['initial'].keys():
+                        layers[initial[2]]['initial'][values[i]] = []
+                    if values[i] not in layers[initial[2]]['final'].keys():
+                        layers[initial[2]]['final'][values[i]] = []
+                    if initial[i] == 'None' or final[i] == 'None': continue
+                    layers[initial[2]]['initial'][values[i]].append(initial[i])
+                    layers[initial[2]]['final'][values[i]].append(final[i])
+                    if values[i] == 'Xmark' and 'None' not in initial and 'None' not in final:
+                        layers[initial[2]]['initial']['Xmark_short'].append(initial[i])
+                        layers[initial[2]]['final']['Xmark_short'].append(final[i])
+                    elif values[i] == 'Ymark' and 'None' not in initial and 'None' not in final:
+                        layers[initial[2]]['initial']['Ymark_short'].append(initial[i])
+                        layers[initial[2]]['final']['Ymark_short'].append(final[i])
+                except IndexError:
+                    import pdb
+                    pdb.set_trace()
         line = tracer_out_file.readline()
-        l += 1
+        lnum += 1
     return layers
 
 def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.txt",title='My_Plot',initial_or_final="fff",size=30,colormap='gist_rainbow',save_plot=False, preform_regression=False, degree_regression=1,display_max_min=False):
@@ -198,10 +203,13 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
         x_time,y_time,z_time = None,None,None
         if initial_or_final[0] == 'f': x_time = 'final'
         elif initial_or_final[0] == 'i': x_time = 'initial'
+        elif initial_or_final[0] == 'd': x_time = 'difference'
         if initial_or_final[1] == 'f': y_time = 'final'
         elif initial_or_final[1] == 'i': y_time = 'initial'
+        elif initial_or_final[1] == 'd': y_time = 'difference'
         if len(initial_or_final) > 2 and len(v) > 2 and initial_or_final[2] == 'f': z_time = 'final'
         elif len(initial_or_final) > 2 and len(v) > 2 and initial_or_final[2] == 'i': z_time = 'initial'
+        elif len(initial_or_final) > 2 and len(v) > 2 and initial_or_final[2] == 'd': z_time = 'difference'
         if not x_time and (not y_time or not z_time):
             print(initial_or_final + " is not a valid time input options are [ff,if,fi,ii,iii,ifi,iff,fii,ffi,fif,fff]")
             return
@@ -210,15 +218,23 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
                 print("n out of range no corrisponding layer, skipping for n = " + str(n))
                 continue
             key = keys[n]
-            x_values = layers[key][x_time]
-            y_values = layers[key][y_time]
-            if z_time: z_values = layers[key][z_time]
-            else: z_values = None
-            x = map(float,x_values[v1])
-            y = map(float,y_values[v2])
+            if x_time == 'difference':
+                l1 = map(float,layers[key]['final'][v1])
+                l2 = map(float,layers[key]['initial'][v1])
+                x = [a-b for a,b in zip(l1,l2)]
+            else: x = map(float,layers[key][x_time][v1])
+            if y_time == 'difference':
+                l1 = map(float,layers[key]['final'][v2])
+                l2 = map(float,layers[key]['initial'][v2])
+                y = [a-b for a,b in zip(l1,l2)]
+            else: y = map(float,layers[key][y_time][v2])
             if not x or not y: continue
-            if z_values != None:
-                z = map(float,z_values[v3])
+            if len(v) > 2:
+                if z_time == 'difference':
+                    l1 = map(float,layers[key]['final'][v3])
+                    l2 = map(float,layers[key]['initial'][v3])
+                    z = [a-b for a,b in zip(l1,l2)]
+                else: z = map(float(layers[key][z_time][v3]))
                 if not z: continue
                 if max(z) > z_max: z_max = max(z)
                 if min(z) < z_min: z_min = min(z)
@@ -228,12 +244,15 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
             if min(y) < y_min: y_min = min(y)
             x_tot += x
             y_tot += y
-            if z_values:
+            if len(v) > 2:
                 z_tot += z
             else:
                 z_tot += [int(float(key)) for i in range(len(x))]
         plot_handle = plt.scatter(x_tot,y_tot,c=z_tot,s=size,cmap=colormap)
         cbar = plt.colorbar()
+        if x_time == 'difference': v1 = 'delta_' + v1 
+        if y_time == 'difference': v2 = 'delta_' + v2 
+        if len(v) > 2 and z_time == 'difference': v3 = 'delta_' + v3 
         if len(v) > 2: cbar.set_label(v3)
         else: cbar.set_label('initial depth')
         plt.xlabel(v1)
@@ -263,7 +282,7 @@ def plot_tracer_data(v,layers_to_plot="All",filepath="TracerResults/tracer-out.t
             directory = reduce(lambda x,y: x + '/' + y, filepath.split('/')[:-1]) + '/'
             var_out_str = reduce(lambda x,y: x + '_' + y, v)
             if not os.path.exists(directory+'Plots/'): os.mkdir(directory+'Plots/')
-            plt.savefig(directory + 'Plots/' + title.replace(' ','_') + '_' + var_out_str + '_' + initial_or_final +'.png',dpi=1296)
+            plt.savefig(directory + 'Plots/' + title.replace(' ','_') + '_' + var_out_str + '_' + initial_or_final +'.png',dpi=648)
         if display_max_min:
             print("lowest layer: " + keys[layers_to_plot[-1]] + ", highest_layer: " + keys[layers_to_plot[0]])
             print(v1 + ": " + "(max = " + str(x_max) + ", min = " + str(x_min) + ")")
@@ -291,7 +310,7 @@ def __main__():
         -v -> specify variables to plot in a tuple format (i.e. (Xmark,Ymark), requres 2 in order to plot, can plot up to 3)
         -i -> specify input file path for plotting (optional)
         -T -> give plot a title (optional)
-        -t -> specify time of simulation to plot currently only initial or final (optional)
+        -t -> specify time of simulation to plot, initial, final or difference ex. iif or ffd (optional)
         -s -> change size of markers (size in pixels, default = 30)
         -c -> change the colormap used in the plot (look at matplotlib colormaps) (optional)
         -S -> save plot image (optional)
